@@ -22,6 +22,49 @@ using NonResizableVectors.VectorBoundsErrors: VectorBoundsError
             end
         end
     end
+    @testset "`IndexStyle`" begin
+        for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
+            @test (@inferred IndexStyle(typ)) === IndexLinear()
+            for elt ∈ (Float32, String)
+                @test (@inferred IndexStyle(typ{elt})) === IndexLinear()
+            end
+        end
+    end
+    @testset "`size`" begin
+        for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
+            for elt ∈ (Float32, String)
+                for n ∈ 0:4
+                    @test (@inferred size(typ{elt}(undef, n))) === (n,)
+                end
+            end
+        end
+    end
+    @testset "`checkbounds`" begin
+        @testset "predicate version" begin
+            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
+                elt = Float32
+                for n ∈ 0:4
+                    for i ∈ (-1):(5)
+                        @test (@inferred checkbounds(Bool, typ{elt}(undef, n), i)) === (1 ≤ i ≤ n)
+                    end
+                end
+            end
+        end
+        @testset "conditionally-throwing version" begin
+            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
+                elt = Float32
+                for n ∈ 0:4
+                    for i ∈ (-1):(5)
+                        if checkbounds(Bool, typ{elt}(undef, n), i)
+                            @test (@inferred checkbounds(typ{elt}(undef, n), i)) === nothing
+                        else
+                            @test_throws VectorBoundsError checkbounds(typ{elt}(undef, n), i)
+                        end
+                    end
+                end
+            end
+        end
+    end
     @testset "`getindex`" begin
         @testset "in-bounds access" begin
             for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
