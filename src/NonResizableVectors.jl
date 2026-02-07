@@ -165,10 +165,19 @@ module NonResizableVectors
                 @inline new(offset)
             end
         end
+        function memory_index(r)  # compat wrapper
+            @inline let
+                @static if hasproperty(Base, :memoryindex)
+                    Base.memoryindex(r)
+                else
+                    Base.memoryrefoffset(r)  # for older versions of Julia, fall back to the non-public functionality
+                end
+            end
+        end
         function validated_memory_ref(x::GenericMemoryRefVector)
             @inline let
                 memory_ref = x.memory_ref
-                offset_into_memory = Base.memoryindex(memory_ref)
+                offset_into_memory = memory_index(memory_ref)
                 if offset_into_memory !== 1
                     throw(MemoryOffsetException(offset_into_memory))
                 end
