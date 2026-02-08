@@ -93,23 +93,6 @@ module NonResizableVectors
             @inline checkbounds_lightboundserror_impl(checkbounds, x, requested_indices...)
         end
     end
-    module CheckboundsOneBased
-        using ..LightBoundsErrors
-        export checkbounds_one_based
-        function in_one_to(x::Int, m::Int)
-            @inline let
-                a = unsigned(x - one(x))
-                b = unsigned(m)
-                a < b
-            end
-        end
-        function checkbounds_one_based(::Type{Bool}, x::AbstractVector, index::Int)
-            @inline let
-                len = length(x)
-                in_one_to(index, len)
-            end
-        end
-    end
     module Miscellaneous
         export vector_supertype, memory_type
         const vector_supertype = AbstractVector  # TODO: consider switching to `DenseVector`
@@ -241,15 +224,12 @@ module NonResizableVectors
             end
         end
     end
-    using .LightBoundsErrors, .CheckboundsOneBased, .GenericMemoryVectors, .GenericMemoryRefVectors
+    using .LightBoundsErrors, .GenericMemoryVectors, .GenericMemoryRefVectors
     export
         MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut
     const NonResizableVector = Union{MemoryVector{T}, MemoryRefVector{T}} where {T}
     function Base.IndexStyle(::Type{<:NonResizableVector})
         @inline IndexLinear()
-    end
-    function Base.checkbounds(::Type{Bool}, x::NonResizableVector, index::Int)
-        @inline checkbounds_one_based(Bool, x, index)
     end
     function Base.checkbounds(x::NonResizableVector, indices...)
         @inline checkbounds_lightboundserror(x, indices...)
