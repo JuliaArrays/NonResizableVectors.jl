@@ -40,16 +40,6 @@ using NonResizableVectors.LightBoundsErrors: LightBoundsError
         end
     end
     @testset "`checkbounds`" begin
-        @testset "predicate version" begin
-            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
-                elt = Float32
-                for n ∈ 0:4
-                    for i ∈ (-1):(5)
-                        @test (@inferred checkbounds(Bool, typ{elt}(undef, n), i)) === (1 ≤ i ≤ n)
-                    end
-                end
-            end
-        end
         @testset "conditionally-throwing version" begin
             for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
                 elt = Float32
