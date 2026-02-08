@@ -24,45 +24,65 @@
 #
 # TODO: implement the dense array interface/the strided array interface
 module NonResizableVectors
-    module VectorBoundsErrors
-        export VectorBoundsError, throw_vectorboundserror
-        mutable struct VectorBoundsError <: Exception
-            const type_of_vector::DataType
-            const first_index::Int
-            const last_index::Int
-            const index::Int
-            function VectorBoundsError(type_of_vector::DataType; first_index::Int, last_index::Int, index::Int)
-                @inline new(type_of_vector, first_index, last_index, index)
+    module ShowSplatted
+        export show_splatted
+        function print_comma_blank(io::IO)
+            print(io, ',')
+            print(io, ' ')
+        end
+        function show_splatted(io::IO, iterator)
+            ei1 = Iterators.peel(iterator)
+            if ei1 === nothing
+                return  # `iterator` is empty, return without printing anything
+            end
+            (e1, i1) = ei1
+            show(io, e1)
+            ei2 = Iterators.peel(i1)
+            if ei2 === nothing
+                return  # `iterator` had only a single element, we already printed it, return now
+            end
+            (e2, i2) = ei2
+            print_comma_blank(io)
+            show(io, e2)
+            for e ∈ i2
+                print_comma_blank(io)
+                show(io, e)
             end
         end
-        function Base.showerror(io::IO, ex::VectorBoundsError)
-            typ = ex.type_of_vector
-            fir = ex.first_index
-            las = ex.last_index
-            ind = ex.index
-            print(io, "VectorBoundsError: attempt to access a vector-like collection of type ")
-            show(io, typ)
-            print(io, ", with first index ")
-            show(io, fir)
-            print(io, ", with last index ")
-            show(io, las)
-            print(io, " at index [")
-            show(io, ind)
-            print(io, ']')
+    end
+    module LightBoundsErrors
+        using ..ShowSplatted
+        export LightBoundsError, throw_lightboundserror
+        mutable struct LightBoundsError <: Exception
+            const collection_type::DataType
+            const collection_axes::Tuple
+            const requested_indices::Tuple
+            function LightBoundsError(; collection_type::DataType, collection_axes::Tuple, requested_indices::Tuple)
+                @inline new(collection_type, collection_axes, requested_indices)
+            end
+        end
+        function Base.showerror(io::IO, ex::LightBoundsError)
+            show(io, typeof(ex))
+            print(io, ": out-of-bounds indexing: `collection[")
+            show_splatted(io, ex.requested_indices)
+            print(io, "]`, where `typeof(collection) == ")
+            show(io, ex.collection_type)
+            print(io, "` and `axes(collection) == ")
+            show(io, ex.collection_axes)
+            print(io, '`')
             nothing
         end
-        function throw_vectorboundserror(x, index::Int)
+        function throw_lightboundserror(x, requested_indices...)
             @inline let
-                typ = typeof(x)
-                first_index = firstindex(x)
-                last_index = lastindex(x)
-                ex = VectorBoundsError(typ; first_index, last_index, index)
+                collection_type = typeof(x)
+                collection_axes = axes(x)
+                ex = LightBoundsError(; collection_type, collection_axes, requested_indices)
                 throw(ex)
             end
         end
     end
     module CheckboundsOneBased
-        using ..VectorBoundsErrors
+        using ..LightBoundsErrors
         export checkbounds_one_based
         function in_one_to(x::Int, m::Int)
             @inline let
@@ -81,7 +101,7 @@ module NonResizableVectors
             @inline let
                 is_inbounds = checkbounds_one_based(Bool, x, index)
                 if !is_inbounds
-                    throw_vectorboundserror(x, index)
+                    throw_lightboundserror(x, index)
                 end
                 nothing
             end
