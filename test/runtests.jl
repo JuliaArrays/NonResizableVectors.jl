@@ -54,12 +54,26 @@ using NonResizableVectors.LightBoundsErrors: LightBoundsError
             for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
                 elt = Float32
                 for n ∈ 0:4
+                    if checkbounds(Bool, typ{elt}(undef, n))
+                        @test (@inferred checkbounds(typ{elt}(undef, n))) === nothing
+                    else
+                        @test_throws LightBoundsError checkbounds(typ{elt}(undef, n))
+                        @test_throws ["LightBoundsError: ", "`collection[]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n))
+                    end
                     for i ∈ (-1):(5)
                         if checkbounds(Bool, typ{elt}(undef, n), i)
                             @test (@inferred checkbounds(typ{elt}(undef, n), i)) === nothing
                         else
                             @test_throws LightBoundsError checkbounds(typ{elt}(undef, n), i)
                             @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n), i)
+                        end
+                        for j ∈ (-1):5
+                            if checkbounds(Bool, typ{elt}(undef, n), i, j)
+                                @test (@inferred checkbounds(typ{elt}(undef, n), i, j)) === nothing
+                            else
+                                @test_throws LightBoundsError checkbounds(typ{elt}(undef, n), i, j)
+                                @test_throws ["LightBoundsError: ", "`collection[$i, $j]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n), i, j)
+                            end
                         end
                     end
                 end
