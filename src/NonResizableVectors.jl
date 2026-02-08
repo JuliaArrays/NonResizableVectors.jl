@@ -72,7 +72,7 @@ module NonResizableVectors
             print(io, '`')
             nothing
         end
-        function throw_lightboundserror(x, requested_indices...)
+        function throw_lightboundserror(x, requested_indices)
             @inline let
                 collection_type = typeof(x)
                 collection_axes = axes(x)
@@ -101,7 +101,7 @@ module NonResizableVectors
             @inline let
                 is_inbounds = checkbounds_one_based(Bool, x, index)
                 if !is_inbounds
-                    throw_lightboundserror(x, index)
+                    throw_lightboundserror(x, (index,))
                 end
                 nothing
             end
