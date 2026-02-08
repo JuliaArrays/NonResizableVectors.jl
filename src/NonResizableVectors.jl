@@ -52,7 +52,7 @@ module NonResizableVectors
     end
     module LightBoundsErrors
         using ..ShowSplatted
-        export LightBoundsError, throw_lightboundserror
+        export LightBoundsError, throw_lightboundserror, checkbounds_lightboundserror
         mutable struct LightBoundsError <: Exception
             const collection_type::DataType
             const collection_axes::Tuple
@@ -80,6 +80,18 @@ module NonResizableVectors
                 throw(ex)
             end
         end
+        function checkbounds_lightboundserror_impl(checkbounds::C, x, requested_indices...) where {C}
+            @inline let
+                is_inbounds = checkbounds(Bool, x, requested_indices...)
+                if !is_inbounds
+                    throw_lightboundserror(x, requested_indices)
+                end
+                nothing
+            end
+        end
+        function checkbounds_lightboundserror(x, requested_indices...)
+            @inline checkbounds_lightboundserror_impl(checkbounds, x, requested_indices...)
+        end
     end
     module CheckboundsOneBased
         using ..LightBoundsErrors
@@ -95,15 +107,6 @@ module NonResizableVectors
             @inline let
                 len = length(x)
                 in_one_to(index, len)
-            end
-        end
-        function checkbounds_one_based(x::AbstractVector, index::Int)
-            @inline let
-                is_inbounds = checkbounds_one_based(Bool, x, index)
-                if !is_inbounds
-                    throw_lightboundserror(x, (index,))
-                end
-                nothing
             end
         end
     end
@@ -238,7 +241,7 @@ module NonResizableVectors
             end
         end
     end
-    using .CheckboundsOneBased, .GenericMemoryVectors, .GenericMemoryRefVectors
+    using .LightBoundsErrors, .CheckboundsOneBased, .GenericMemoryVectors, .GenericMemoryRefVectors
     export
         MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut
     const NonResizableVector = Union{MemoryVector{T}, MemoryRefVector{T}} where {T}
@@ -248,8 +251,8 @@ module NonResizableVectors
     function Base.checkbounds(::Type{Bool}, x::NonResizableVector, index::Int)
         @inline checkbounds_one_based(Bool, x, index)
     end
-    function Base.checkbounds(x::NonResizableVector, index::Int)
-        @inline checkbounds_one_based(x, index)
+    function Base.checkbounds(x::NonResizableVector, indices...)
+        @inline checkbounds_lightboundserror(x, indices...)
     end
     function Base.iterate(x::NonResizableVector, index)
         @inline let
