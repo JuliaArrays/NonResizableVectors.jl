@@ -2,7 +2,7 @@ using NonResizableVectors
 using Test
 
 # not public API yet
-using NonResizableVectors.VectorBoundsErrors: VectorBoundsError
+using NonResizableVectors.LightBoundsErrors: LightBoundsError
 
 @testset "NonResizableVectors.jl" begin
     @testset "subtyping" begin
@@ -58,7 +58,8 @@ using NonResizableVectors.VectorBoundsErrors: VectorBoundsError
                         if checkbounds(Bool, typ{elt}(undef, n), i)
                             @test (@inferred checkbounds(typ{elt}(undef, n), i)) === nothing
                         else
-                            @test_throws VectorBoundsError checkbounds(typ{elt}(undef, n), i)
+                            @test_throws LightBoundsError checkbounds(typ{elt}(undef, n), i)
+                            @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n), i)
                         end
                     end
                 end
@@ -83,7 +84,8 @@ using NonResizableVectors.VectorBoundsErrors: VectorBoundsError
                 elt = Float32
                 for n ∈ 0:4
                     for i ∈ (-1, 0, n + 1, n + 2)
-                        @test_throws VectorBoundsError typ{elt}(undef, n)[i]
+                        @test_throws LightBoundsError typ{elt}(undef, n)[i]
+                        @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] typ{elt}(undef, n)[i]
                     end
                 end
             end
@@ -107,7 +109,8 @@ using NonResizableVectors.VectorBoundsErrors: VectorBoundsError
                 elt = Float32
                 for n ∈ 0:4
                     for i ∈ (-1, 0, n + 1, n + 2)
-                        @test_throws VectorBoundsError typ{elt}(undef, n)[i] = 3
+                        @test_throws LightBoundsError typ{elt}(undef, n)[i] = 3
+                        @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] typ{elt}(undef, n)[i] = 3
                     end
                 end
             end
