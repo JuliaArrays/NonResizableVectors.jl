@@ -4,6 +4,62 @@ using Test
 # not public API yet
 using NonResizableVectors.LightBoundsErrors: LightBoundsError
 
+const basic_types = (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
+
+function sprint_splatted(iterator)
+    t = tuple(iterator...)
+    if t isa Tuple{Any}
+        string(only(t))
+    else
+        string(t)[(begin + 1):(end - 1)]
+    end
+end
+
+function branch_helper(funcs::Tuple{Any, NTuple{2, Any}}, x...; y...)
+    (predicate, (f, g)) = funcs
+    if predicate(x...; y...)
+        f(x...; y...)
+    else
+        g(x...; y...)
+    end
+end
+
+function first_several_iterator_products(i)
+    (
+        Iterators.product(),
+        Iterators.product(i),
+        Iterators.product(i, i),
+        Iterators.product(i, i, i),
+    )
+end
+
+function test_helper_some_lengths_some_indices(funcs::Tuple{Any, NTuple{2, Any}}, max_len::Int = 2)
+    branch_helper_fgh = Base.Fix1(branch_helper, funcs)
+    foreach_splat_branch_helper_fgh = Base.Fix1(foreach, splat(branch_helper_fgh))
+    r = (-1):(max_len + 1)
+    r_products = first_several_iterator_products(r)
+    for n ∈ 0:max_len
+        func_2 = Base.Fix1(tuple, n)
+        func_1 = Base.Fix1(Iterators.map, func_2)
+        iterators = map(func_1, r_products)
+        foreach(foreach_splat_branch_helper_fgh, iterators)
+    end
+end
+
+function test_helper_some_types_some_lengths_some_indices(func::F, func_predicate::P, ::Type{Elt}, types = basic_types) where {F, P, Elt}
+    for typ ∈ types
+        t = typ{Elt}
+        predicate = func_predicate ∘ Base.Fix1(checkbounds_bool_undef, t)
+        live_branch = Base.Fix1(func, t)
+        dead_branch = Returns(nothing)
+        test_helper_some_lengths_some_indices((predicate, (live_branch, dead_branch)))
+    end
+end
+
+function checkbounds_bool_undef(::Type{T}, n::Integer, i::Tuple) where {T}
+    checkbounds(Bool, T(undef, n), i...)
+end
+
 @testset "NonResizableVectors.jl" begin
     @testset "subtyping" begin
         for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
@@ -40,84 +96,58 @@ using NonResizableVectors.LightBoundsErrors: LightBoundsError
         end
     end
     @testset "`checkbounds`" begin
-        @testset "conditionally-throwing version" begin
-            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
-                elt = Float32
-                for n ∈ 0:4
-                    if checkbounds(Bool, typ{elt}(undef, n))
-                        @test (@inferred checkbounds(typ{elt}(undef, n))) === nothing
-                    else
-                        @test_throws LightBoundsError checkbounds(typ{elt}(undef, n))
-                        @test_throws ["LightBoundsError: ", "`collection[]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n))
-                    end
-                    for i ∈ (-1):(5)
-                        if checkbounds(Bool, typ{elt}(undef, n), i)
-                            @test (@inferred checkbounds(typ{elt}(undef, n), i)) === nothing
-                        else
-                            @test_throws LightBoundsError checkbounds(typ{elt}(undef, n), i)
-                            @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n), i)
-                        end
-                        for j ∈ (-1):5
-                            if checkbounds(Bool, typ{elt}(undef, n), i, j)
-                                @test (@inferred checkbounds(typ{elt}(undef, n), i, j)) === nothing
-                            else
-                                @test_throws LightBoundsError checkbounds(typ{elt}(undef, n), i, j)
-                                @test_throws ["LightBoundsError: ", "`collection[$i, $j]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] checkbounds(typ{elt}(undef, n), i, j)
-                            end
-                        end
-                    end
-                end
+        @testset "returns" begin
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test nothing === @inferred checkbounds(T(undef, n), i...)
+                nothing
             end
+            test_helper_some_types_some_lengths_some_indices(func, identity, Float32)
+        end
+        @testset "throws" begin
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test_throws LightBoundsError checkbounds(T(undef, n), i...)
+                @test_throws ["LightBoundsError: ", "`collection[$(sprint_splatted(i))]`", "`typeof(collection) == $(typeof(T(undef, n)))`", "`axes(collection) == $(axes(T(undef, n)))`"] checkbounds(T(undef, n), i...)
+                nothing
+            end
+            test_helper_some_types_some_lengths_some_indices(func, !, Float32)
         end
     end
     @testset "`getindex`" begin
         @testset "in-bounds access" begin
-            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
-                elt = Float32
-                for n ∈ 1:4
-                    for i ∈ 1:n
-                        @test let v = typ{elt}(undef, n)
-                            (@inferred v[i]) isa elt
-                        end
-                    end
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test let v = T(undef, n)
+                    (@inferred v[i...]) isa eltype(T)
                 end
+                nothing
             end
+            test_helper_some_types_some_lengths_some_indices(func, identity, Float32)
         end
         @testset "out-of-bounds access" begin
-            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
-                elt = Float32
-                for n ∈ 0:4
-                    for i ∈ (-1, 0, n + 1, n + 2)
-                        @test_throws LightBoundsError typ{elt}(undef, n)[i]
-                        @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] typ{elt}(undef, n)[i]
-                    end
-                end
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test_throws LightBoundsError T(undef, n)[i...]
+                @test_throws ["LightBoundsError: ", "`collection[$(sprint_splatted(i))]`", "`typeof(collection) == $(typeof(T(undef, n)))`", "`axes(collection) == $(axes(T(undef, n)))`"] T(undef, n)[i...]
+                nothing
             end
+            test_helper_some_types_some_lengths_some_indices(func, !, Float32)
         end
     end
     @testset "`setindex!`" begin
         @testset "in-bounds access" begin
-            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
-                elt = Float32
-                for n ∈ 1:4
-                    for i ∈ 1:n
-                        @test let v = typ{elt}(undef, n)
-                            (@inferred setindex!(v, 3, i)) === v
-                        end
-                    end
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test let v = T(undef, n)
+                    (@inferred setindex!(v, 3, i...)) === v
                 end
+                nothing
             end
+            test_helper_some_types_some_lengths_some_indices(func, identity, Float32)
         end
         @testset "out-of-bounds access" begin
-            for typ ∈ (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
-                elt = Float32
-                for n ∈ 0:4
-                    for i ∈ (-1, 0, n + 1, n + 2)
-                        @test_throws LightBoundsError typ{elt}(undef, n)[i] = 3
-                        @test_throws ["LightBoundsError: ", "`collection[$i]`", "`typeof(collection) == $(typeof(typ{elt}(undef, n)))`", "`axes(collection) == $(axes(typ{elt}(undef, n)))`"] typ{elt}(undef, n)[i] = 3
-                    end
-                end
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test_throws LightBoundsError T(undef, n)[i...] = 3
+                @test_throws ["LightBoundsError: ", "`collection[$(sprint_splatted(i))]`", "`typeof(collection) == $(typeof(T(undef, n)))`", "`axes(collection) == $(axes(T(undef, n)))`"] T(undef, n)[i...] = 3
+                nothing
             end
+            test_helper_some_types_some_lengths_some_indices(func, !, Float32)
         end
     end
     @testset "`getindex`, `setindex!` consistency" begin
