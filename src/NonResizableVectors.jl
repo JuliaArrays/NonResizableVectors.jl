@@ -251,7 +251,7 @@ module NonResizableVectors
     function Base.checkbounds(::Type{Bool}, x::NonResizableVector, index::Int)
         @inline checkbounds_one_based(Bool, x, index)
     end
-    function Base.checkbounds(x::NonResizableVector, indices)
+    function Base.checkbounds(x::NonResizableVector, indices...)
         @inline checkbounds_lightboundserror(x, indices...)
     end
     function Base.iterate(x::NonResizableVector, index)
