@@ -133,6 +133,9 @@ module NonResizableVectors
         Base.@propagate_inbounds function Base.isassigned(x::MemoryVector, index::Int)
             @inline isassigned(x.memory, index)::Bool
         end
+        function Base.parent(x::MemoryVector)
+            x.memory
+        end
     end
     module GenericMemoryRefVectors
         using ..Miscellaneous
@@ -222,6 +225,9 @@ module NonResizableVectors
                 memory_ref_with_offset = @inbounds memoryref(memory_ref, index)
                 isassigned(memory_ref_with_offset)::Bool
             end
+        end
+        function Base.parent(x::MemoryRefVector)
+            parent(x.memory_ref)
         end
     end
     using .LightBoundsErrors, .GenericMemoryVectors, .GenericMemoryRefVectors
