@@ -226,6 +226,24 @@ end
             end
         end
     end
+    @testset "`parent`" begin
+        for typ ∈ basic_types
+            t = typ{Float32}
+            for n ∈ 0:4
+                @test let v = t(undef, n)
+                    (@inferred parent(v)) isa Memory
+                end
+                @test let v = t(undef, n)
+                    parent(v) === parent(v)
+                end
+                if !iszero(n)
+                    @test let v = t(undef, n), u = t(undef, n)
+                        parent(u) !== parent(v)
+                    end
+                end
+            end
+        end
+    end
 end
 
 using Aqua: Aqua
