@@ -164,6 +164,68 @@ end
             end
         end
     end
+    @testset "`isassigned`" begin
+        @testset "is assigned" begin
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test let v = T(undef, n)
+                    @inferred isassigned(v, i...)
+                end
+                nothing
+            end
+            test_helper_some_types_some_lengths_some_indices(func, identity, Float32)
+        end
+        @testset "is not assigned" begin
+            function func(::Type{T}, n::Integer, i::Tuple) where {T}
+                @test let v = T(undef, n)
+                    !(@inferred isassigned(v, i...))
+                end
+                nothing
+            end
+            test_helper_some_types_some_lengths_some_indices(func, !, Float32)
+        end
+    end
+    @testset "`iterate`" begin
+        @testset "vector of length 0" begin
+            for typ ∈ basic_types
+                t = typ{Float32}
+                @test let v = t(undef, 0)
+                    nothing === iterate(v)
+                end
+            end
+        end
+        @testset "vector of length 1" begin
+            for typ ∈ basic_types
+                t = typ{Float32}
+                @test let v = t(undef, 1)
+                    iterate(v) isa Tuple{Float32, Any}
+                end
+                @test let v = t(undef, 1)
+                    v[] = 7
+                    eltype(t)(7) === iterate(v)[1]
+                end
+                @test let v = t(undef, 1)
+                    is = iterate(v)[2]
+                    nothing === iterate(v, is)
+                end
+            end
+        end
+    end
+    @testset "`getindex`, `setindex!`, `iterate`, etc. consistency" begin
+        for typ ∈ basic_types
+            t = typ{BigInt}
+            for n ∈ 0:7
+                v = t(undef, n)
+                for i ∈ eachindex(v)
+                    v[i] = 100 * i + 7
+                end
+                i = 0
+                for e ∈ v
+                    i = i + 1
+                    @test e === v[i]
+                end
+            end
+        end
+    end
 end
 
 using Aqua: Aqua

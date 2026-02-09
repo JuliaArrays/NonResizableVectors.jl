@@ -234,7 +234,7 @@ module NonResizableVectors
     function Base.checkbounds(x::NonResizableVector, indices...)
         @inline checkbounds_lightboundserror(x, indices...)
     end
-    function Base.iterate(x::NonResizableVector, index)
+    function Base.iterate(x::NonResizableVector, index = 1)
         @inline let
             index = index::Int
             if checkbounds(Bool, x, index)
