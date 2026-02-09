@@ -1,7 +1,3 @@
-# TODO: test suite
-#
-# TODO: add methods for `Base.dataids`
-#
 # TODO: add methods for single-argument `Base.getindex`, if beneficial
 #
 # TODO: add methods for two-argument `Base.getindex` where the second argument is a `Colon`, if beneficial
