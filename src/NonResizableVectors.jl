@@ -1,7 +1,3 @@
-# TODO: test suite
-#
-# TODO: add methods for `Base.dataids`
-#
 # TODO: add methods for single-argument `Base.getindex`, if beneficial
 #
 # TODO: add methods for two-argument `Base.getindex` where the second argument is a `Colon`, if beneficial
@@ -248,6 +244,11 @@ module NonResizableVectors
             else
                 nothing
             end
+        end
+    end
+    if isdefined(Base, :dataids)  # not public: https://github.com/JuliaLang/julia/issues/51753
+        function Base.dataids(x::NonResizableVector)
+            Base.dataids(parent(x))  # forward to `dataids(::Memory)`
         end
     end
 end
