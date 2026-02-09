@@ -244,6 +244,17 @@ end
             end
         end
     end
+    @testset "`Base.dataids`" begin
+        for typ ∈ basic_types
+            t = typ{Float32}
+            n = 3
+            if isdefined(Base, :dataids)
+                @test let v = t(undef, n)
+                    Base.dataids(parent(v)) === @inferred Base.dataids(v)
+                end
+            end
+        end
+    end
 end
 
 using Aqua: Aqua
