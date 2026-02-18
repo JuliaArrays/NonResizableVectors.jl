@@ -3,8 +3,12 @@ uuid = "7f57ccbd-1551-4290-8d6c-558f708f8ba7"
 authors = ["Neven Sajko <s@purelymail.com> and contributors"]
 version = "1.0.0"
 
+[deps]
+LightBoundsErrors = "e21c612c-4641-4669-b9c3-3f4360ced9da"
+
 [compat]
 Aqua = "0.8"
+LightBoundsErrors = "1"
 Test = "1.11"
 julia = "1.12"
 

@@ -20,75 +20,6 @@
 #
 # TODO: implement the dense array interface/the strided array interface
 module NonResizableVectors
-    module ShowSplatted
-        export show_splatted
-        function print_comma_blank(io::IO)
-            print(io, ',')
-            print(io, ' ')
-        end
-        function show_splatted(io::IO, iterator)
-            ei1 = Iterators.peel(iterator)
-            if ei1 === nothing
-                return  # `iterator` is empty, return without printing anything
-            end
-            (e1, i1) = ei1
-            show(io, e1)
-            ei2 = Iterators.peel(i1)
-            if ei2 === nothing
-                return  # `iterator` had only a single element, we already printed it, return now
-            end
-            (e2, i2) = ei2
-            print_comma_blank(io)
-            show(io, e2)
-            for e ∈ i2
-                print_comma_blank(io)
-                show(io, e)
-            end
-        end
-    end
-    module LightBoundsErrors
-        using ..ShowSplatted
-        export LightBoundsError, throw_lightboundserror, checkbounds_lightboundserror
-        mutable struct LightBoundsError <: Exception
-            const collection_type::DataType
-            const collection_axes::Tuple
-            const requested_indices::Tuple
-            function LightBoundsError(; collection_type::DataType, collection_axes::Tuple, requested_indices::Tuple)
-                @inline new(collection_type, collection_axes, requested_indices)
-            end
-        end
-        function Base.showerror(io::IO, ex::LightBoundsError)
-            show(io, typeof(ex))
-            print(io, ": out-of-bounds indexing: `collection[")
-            show_splatted(io, ex.requested_indices)
-            print(io, "]`, where `typeof(collection) == ")
-            show(io, ex.collection_type)
-            print(io, "` and `axes(collection) == ")
-            show(io, ex.collection_axes)
-            print(io, '`')
-            nothing
-        end
-        function throw_lightboundserror(x, requested_indices)
-            @inline let
-                collection_type = typeof(x)
-                collection_axes = axes(x)
-                ex = LightBoundsError(; collection_type, collection_axes, requested_indices)
-                throw(ex)
-            end
-        end
-        function checkbounds_lightboundserror_impl(checkbounds::C, x, requested_indices...) where {C}
-            @inline let
-                is_inbounds = checkbounds(Bool, x, requested_indices...)
-                if !is_inbounds
-                    throw_lightboundserror(x, requested_indices)
-                end
-                nothing
-            end
-        end
-        function checkbounds_lightboundserror(x, requested_indices...)
-            @inline checkbounds_lightboundserror_impl(checkbounds, x, requested_indices...)
-        end
-    end
     module Miscellaneous
         export vector_supertype, memory_type
         const vector_supertype = AbstractVector  # TODO: consider switching to `DenseVector`
@@ -226,7 +157,8 @@ module NonResizableVectors
             parent(x.memory_ref)
         end
     end
-    using .LightBoundsErrors, .GenericMemoryVectors, .GenericMemoryRefVectors
+    using .GenericMemoryVectors, .GenericMemoryRefVectors
+    using LightBoundsErrors: checkbounds_lightboundserror
     export
         MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut
     const NonResizableVector = Union{MemoryVector{T}, MemoryRefVector{T}} where {T}
