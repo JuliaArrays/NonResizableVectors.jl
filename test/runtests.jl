@@ -2,7 +2,7 @@ using NonResizableVectors
 using Test
 
 # not public API yet
-using NonResizableVectors.LightBoundsErrors: LightBoundsError
+using LightBoundsErrors: LightBoundsError
 
 const basic_types = (MemoryVector, MemoryRefVectorImm, MemoryRefVectorMut)
 
