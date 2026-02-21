@@ -85,30 +85,16 @@ module NonResizableVectors
         const MemoryRefVector = GenericMemoryRefVector{:not_atomic, T, Core.CPU} where {T}
         const MemoryRefVectorImm = GenericMemoryRefVectorImm{:not_atomic, T, Core.CPU} where {T}
         const MemoryRefVectorMut = GenericMemoryRefVectorMut{:not_atomic, T, Core.CPU} where {T}
-        struct MemoryOffsetException <: Exception
-            offset::Int
-            function MemoryOffsetException(offset::Int)
-                new(offset)
-            end
-        end
-        function memory_index(r)  # compat wrapper
-            @static if hasproperty(Base, :memoryindex)
-                Base.memoryindex(r)
-            else
-                Base.memoryrefoffset(r)  # for older versions of Julia, fall back to the non-public functionality
-            end
-        end
         function validated_memory_ref(x::GenericMemoryRefVector)
-            memory_ref = x.memory_ref
-            offset_into_memory = memory_index(memory_ref)
-            if offset_into_memory !== 1
-                throw(MemoryOffsetException(offset_into_memory))
-            end
-            memory_ref
+            x.memory_ref
         end
         function Base.size(x::MemoryRefVector)
             memory_ref = validated_memory_ref(x)
-            size(memory_ref.mem)
+            i = 1  # more generally correct: `i = Base.memoryindex(memory_ref)`
+            m = memory_ref.mem
+            ml = length(m)
+            l = ml - i + 1
+            (l,)
         end
         Base.@propagate_inbounds function Base.getindex(x::MemoryRefVector, index::Int)
             @boundscheck checkbounds(x, index)
