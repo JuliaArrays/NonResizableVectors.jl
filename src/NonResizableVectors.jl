@@ -85,16 +85,12 @@ module NonResizableVectors
         const MemoryRefVector = GenericMemoryRefVector{:not_atomic, T, Core.CPU} where {T}
         const MemoryRefVectorImm = GenericMemoryRefVectorImm{:not_atomic, T, Core.CPU} where {T}
         const MemoryRefVectorMut = GenericMemoryRefVectorMut{:not_atomic, T, Core.CPU} where {T}
-        function memory_index(r)
-            # more generally the correct value to return is `Base.memoryindex(r)`
-            1
-        end
         function validated_memory_ref(x::GenericMemoryRefVector)
             x.memory_ref
         end
         function Base.size(x::MemoryRefVector)
             memory_ref = validated_memory_ref(x)
-            i = memory_index(memory_ref)
+            i = 1  # more generally correct: `i = Base.memoryindex(memory_ref)`
             m = memory_ref.mem
             ml = length(m)
             l = ml - i + 1
