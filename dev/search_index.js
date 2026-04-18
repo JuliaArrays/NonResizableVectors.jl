@@ -1,3 +1,3 @@
 var documenterSearchIndex = {"docs":
-[{"location":"#NonResizableVectors","page":"Home","title":"NonResizableVectors","text":"Documentation for NonResizableVectors.\n\n","category":"section"}]
+[{"category":"section","location":"#NonResizableVectors","page":"Home","text":"Documentation for NonResizableVectors.\n\n","title":"NonResizableVectors"}]
 }
